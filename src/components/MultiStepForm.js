@@ -5,7 +5,7 @@ import { useState } from "react";
 import FormButton from "./FormButton";
 import FormInput from "./FormInput";
 
-export default function MultiStepForm() {
+export default function eMultiStepForm() {
   const [step, setStep] = useState(1);
   const [error, setError] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -19,8 +19,8 @@ export default function MultiStepForm() {
     password: "",
     confirmPassword: "",
     birthDate: "",
-    address: "",
-    bio: "",
+    profileImage: "",
+    profileImagePreview: "",
   });
 
   function handleInputChange(event) {
@@ -31,6 +31,30 @@ export default function MultiStepForm() {
       ...formData,
       [inputName]: inputValue,
     });
+  }
+
+  function handleProfileImageChange(event) {
+    const file = event.target.files?.[0];
+
+    if (!file) {
+      return;
+    }
+
+    const reader = new FileReader();
+
+    reader.onload = () => {
+      if (typeof reader.result !== "string") {
+        return;
+      }
+
+      setFormData((currentFormData) => ({
+        ...currentFormData,
+        profileImage: file.name,
+        profileImagePreview: reader.result,
+      }));
+    };
+
+    reader.readAsDataURL(file);
   }
 
   function handleNext(event) {
@@ -71,7 +95,7 @@ export default function MultiStepForm() {
     }
 
     if (step === 3) {
-      if (!formData.birthDate || !formData.address || !formData.bio) {
+      if (!formData.birthDate || !formData.profileImage) {
         setError("Please fill all fields.");
         return;
       }
@@ -125,18 +149,21 @@ export default function MultiStepForm() {
                   value={formData.firstName}
                   onChange={handleInputChange}
                 />
+                <p className="text-[10px] text-red-500">First name cannot contain special characters or numbers.</p>
                 <FormInput
                   label="Last name"
                   name="lastName"
                   value={formData.lastName}
                   onChange={handleInputChange}
                 />
+                <p className="text-[10px] text-red-500">Last name cannot contain special characters or numbers.</p>
                 <FormInput
                   label="Username"
                   name="username"
                   value={formData.username}
                   onChange={handleInputChange}
                 />
+                <p className="text-[10px] text-red-500">This username is already taken. Please choose another one.</p>
               </>
             )}
 
@@ -182,18 +209,44 @@ export default function MultiStepForm() {
                   value={formData.birthDate}
                   onChange={handleInputChange}
                 />
-                <FormInput
-                  label="Address"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleInputChange}
-                />
-                <FormInput
-                  label="Short bio"
-                  name="bio"
-                  value={formData.bio}
-                  onChange={handleInputChange}
-                />
+                <p className="text-[10px] text-red-500">Please select a date.</p>
+                <label className="block">
+                  <span className="mb-2 block text-[10px] font-semibold text-[#111214]">
+                    Profile image <span className="text-red-500">*</span>
+                  </span>
+
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="sr-only"
+                    onChange={handleProfileImageChange}
+                  />
+
+                  <span className="relative flex h-41 cursor-pointer flex-col items-center justify-center overflow-hidden rounded bg-[#f7f7f8] text-center text-xs text-[#111214] transition hover:bg-slate-100">
+                    {formData.profileImagePreview ? (
+                      <Image
+                        src={formData.profileImagePreview}
+                        alt="Profile preview"
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    ) : (
+                      <>
+                        <span className="mb-3 flex h-6 w-6 items-center justify-center rounded-full bg-white shadow-sm">
+                          <Image
+                            src="/image.svg"
+                            alt="Add image icon"
+                            width={16}
+                            height={16}
+                            className="text-[#111214]"
+                          />
+                        </span>
+                        <span>Add image</span>
+                      </>
+                    )}
+                  </span>
+                </label>
               </>
             )}
 
