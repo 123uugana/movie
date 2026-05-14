@@ -1,14 +1,17 @@
+import AppChrome from "@/components/AppChrome";
 import "./globals.css";
 
 export const metadata = {
-  title: "Join Us",
-  description: "Multi-step registration form",
+  title: "Movie Web Application",
+  description: "Simple movie app made with beginner friendly code.",
 };
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en" className="h-full antialiased">
-      <body className="min-h-full flex flex-col">{children}</body>
+    <html lang="en">
+      <body>
+        <AppChrome>{children}</AppChrome>
+      </body>
     </html>
   );
 }
