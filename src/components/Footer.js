@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="footer-logo">
           <Logo />
         </div>
-        <p>© 2024 Movie Z. All Rights Reserved.</p>
+        <p>© 2026 Movie Z. All Rights Reserved.</p>
       </div>
 
       <div className="footer-column">
