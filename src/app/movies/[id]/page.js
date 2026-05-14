@@ -9,6 +9,24 @@ export function generateStaticParams() {
   }));
 }
 
+function getYouTubeVideoId(url) {
+  if (!url) {
+    return "";
+  }
+
+  const parsedUrl = new URL(url);
+
+  if (parsedUrl.hostname.includes("youtu.be")) {
+    return parsedUrl.pathname.slice(1);
+  }
+
+  if (parsedUrl.pathname.startsWith("/embed/")) {
+    return parsedUrl.pathname.split("/embed/")[1];
+  }
+
+  return parsedUrl.searchParams.get("v") || "";
+}
+
 export default function MovieDetailsPage({ params }) {
   const movie = movies.find((item) => item.id === Number(params.id));
   const similarMovies = movies.filter((item) => item.id !== movie?.id).slice(0, 6);
@@ -25,7 +43,7 @@ export default function MovieDetailsPage({ params }) {
   }
 
   const movieTags = movie.tags || [movie.genre];
-  const trailerVideoId = movie.videoId || "dQw4w9WgXcQ";
+  const trailerVideoId = movie.videoId || getYouTubeVideoId(movie.trailer);
 
   return (
     <main className="details-page">
