@@ -1,8 +1,0 @@
-{
-  "/_not-found/page": "app/_not-found/page.js",
-  "/signup/page": "app/signup/page.js",
-  "/movies/[id]/page": "app/movies/[id]/page.js",
-  "/search/page": "app/search/page.js",
-  "/page": "app/page.js",
-  "/genres/page": "app/genres/page.js"
-}
