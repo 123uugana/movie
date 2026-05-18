@@ -20,9 +20,6 @@ export default function Header() {
       </nav>
 
       <div className="header-actions">
-        <Link href="/signup" className="signup-link">
-          Sign up
-        </Link>
         <ThemeToggle />
       </div>
     </header>
