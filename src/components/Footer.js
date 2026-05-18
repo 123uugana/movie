@@ -7,7 +7,7 @@ export default function Footer() {
         <div className="footer-logo">
           <Logo />
         </div>
-        <p>© 2026 Movie Z. All Rights Reserved.</p>
+        <p>© 2026clea Movie Z. All Rights Reserved.</p>
       </div>
 
       <div className="footer-column">
@@ -33,6 +33,7 @@ export default function Footer() {
       <div className="footer-column">
         <h3>Follow us</h3>
         <div className="footer-links">
+          <a href="#">Pinecone</a>
           <a href="#">Facebook</a>
           <a href="#">Instagram</a>
           <a href="#">Twitter</a>

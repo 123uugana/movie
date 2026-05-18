@@ -3,6 +3,7 @@
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { z } from "zod";
 
 const initialFormData = {
   firstName: "",
@@ -17,18 +18,87 @@ const initialFormData = {
   profileImagePreview: "",
 };
 
+const namePattern = /^[A-Za-zА-Яа-яӨөҮүЁё\s-]+$/;
+const nameField = (label) =>
+  z
+    .string()
+    .trim()
+    .min(1, `${label} is required.`)
+    .regex(namePattern, `${label} cannot contain special characters or numbers.`);
+
+const stepSchemas = {
+  1: z.object({
+    firstName: nameField("First name"),
+    lastName: nameField("Last name"),
+    username: z
+      .string()
+      .trim()
+      .min(1, "Username is required.")
+      .regex(/^[A-Za-z0-9_]+$/, "Username can only contain letters, numbers, and underscores."),
+  }),
+  2: z
+    .object({
+      email: z.email("Please enter a valid email address."),
+      phone: z
+        .string()
+        .trim()
+        .min(1, "Phone number is required.")
+        .regex(/^[0-9+\-\s()]{6,}$/, "Please enter a valid phone number."),
+      password: z.string().min(8, "Password must be at least 8 characters."),
+      confirmPassword: z.string().min(1, "Please confirm your password."),
+    })
+    .refine((data) => data.password === data.confirmPassword, {
+      message: "Passwords do not match.",
+      path: ["confirmPassword"],
+    }),
+  3: z.object({
+    birthDate: z.string().min(1, "Please select a date."),
+    profileImage: z.string().min(1, "Please add a profile image."),
+  }),
+};
+
+const stepFields = {
+  1: [
+    ["First name", "firstName"],
+    ["Last name", "lastName"],
+    ["Username", "username"],
+  ],
+  2: [
+    ["Email", "email", "email"],
+    ["Phone number", "phone", "tel"],
+    ["Password", "password", "password"],
+    ["Confirm password", "confirmPassword", "password"],
+  ],
+  3: [["Date of birth", "birthDate", "date"]],
+};
+
+function getValidationErrors(zodError) {
+  return zodError.issues.reduce((errors, issue) => {
+    const fieldName = issue.path[0];
+
+    return fieldName && !errors[fieldName]
+      ? { ...errors, [fieldName]: issue.message }
+      : errors;
+  }, {});
+}
+
 export default function SignupForm() {
   const router = useRouter();
   const [step, setStep] = useState(1);
-  const [error, setError] = useState("");
-  const [isSubmitted, setIsSubmitted] = useState(false);
+  const [errors, setErrors] = useState({});
   const [formData, setFormData] = useState(initialFormData);
 
+  function clearError(name) {
+    setErrors((currentErrors) => ({ ...currentErrors, [name]: "" }));
+  }
+
+  function updateField(name, value) {
+    setFormData((currentFormData) => ({ ...currentFormData, [name]: value }));
+    clearError(name);
+  }
+
   function handleChange(event) {
-    setFormData({
-      ...formData,
-      [event.target.name]: event.target.value,
-    });
+    updateField(event.target.name, event.target.value);
   }
 
   function handleProfileImageChange(event) {
@@ -50,72 +120,42 @@ export default function SignupForm() {
         profileImage: file.name,
         profileImagePreview: reader.result,
       }));
+      clearError("profileImage");
     };
 
     reader.readAsDataURL(file);
   }
 
+  function validateStep() {
+    const result = stepSchemas[step].safeParse(formData);
+
+    if (!result.success) {
+      setErrors(getValidationErrors(result.error));
+      return false;
+    }
+
+    setErrors({});
+    return true;
+  }
+
   function handleNext(event) {
     event.preventDefault();
-    setError("");
 
-    if (step === 1) {
-      if (!formData.firstName || !formData.lastName || !formData.username) {
-        setError("Please fill all fields.");
-        return;
-      }
-
-      setStep(2);
+    if (!validateStep()) {
       return;
     }
 
-    if (step === 2) {
-      if (
-        !formData.email ||
-        !formData.phone ||
-        !formData.password ||
-        !formData.confirmPassword
-      ) {
-        setError("Please fill all fields.");
-        return;
-      }
-
-      if (!formData.email.includes("@")) {
-        setError("Please enter a valid email address.");
-        return;
-      }
-
-      if (formData.password !== formData.confirmPassword) {
-        setError("Passwords do not match.");
-        return;
-      }
-
-      setStep(3);
+    if (step < 3) {
+      setStep(step + 1);
       return;
     }
 
-    if (!formData.birthDate || !formData.profileImage) {
-      setError("Please fill all fields.");
-      return;
-    }
-
-    setIsSubmitted(true);
     router.push("/");
   }
 
   function handleBack() {
-    setError("");
-
-    if (step > 1) {
-      setStep(step - 1);
-    }
-  }
-
-  function handleStartOver() {
-    setFormData(initialFormData);
-    setStep(1);
-    setError("");
-    setIsSubmitted(false);
+    setErrors({});
+    setStep((currentStep) => Math.max(1, currentStep - 1));
   }
 
   return (
@@ -135,153 +175,44 @@ export default function SignupForm() {
           Please provide all current information accurately.
         </p>
 
-        {isSubmitted ? (
-          <div className="signup-success">
-            <h2>You are all set 🔥</h2>
-            <p>Your sign up information has been submitted.</p>
-            <button type="button" onClick={handleStartOver}>
-              Start over
+        <div className="signup-fields">
+          {stepFields[step].map(([label, name, type]) => (
+            <FormField
+              key={name}
+              label={label}
+              name={name}
+              type={type}
+              value={formData[name]}
+              onChange={handleChange}
+              error={errors[name]}
+            />
+          ))}
+
+          {step === 3 && (
+            <ImageUpload
+              preview={formData.profileImagePreview}
+              error={errors.profileImage}
+              onChange={handleProfileImageChange}
+            />
+          )}
+        </div>
+
+        <div className="signup-controls">
+          {step > 1 && (
+            <button type="button" className="secondary-button" onClick={handleBack}>
+              ‹ Back
             </button>
-          </div>
-        ) : (
-          <>
-            <div className="signup-fields">
-              {step === 1 && (
-                <>
-                  <FormField
-                    label="First name"
-                    name="firstName"
-                    value={formData.firstName}
-                    onChange={handleChange}
-                  />
-                  <p className="field-message">
-                    First name cannot contain special characters or numbers.
-                  </p>
-                  <FormField
-                    label="Last name"
-                    name="lastName"
-                    value={formData.lastName}
-                    onChange={handleChange}
-                  />
-                  <p className="field-message">
-                    Last name cannot contain special characters or numbers.
-                  </p>
-                  <FormField
-                    label="Username"
-                    name="username"
-                    value={formData.username}
-                    onChange={handleChange}
-                  />
-                  <p className="field-message">
-                    This username is already taken. Please choose another one.
-                  </p>
-                </>
-              )}
-
-              {step === 2 && (
-                <>
-                  <FormField
-                    label="Email"
-                    name="email"
-                    type="email"
-                    value={formData.email}
-                    onChange={handleChange}
-                  />
-                  <FormField
-                    label="Phone number"
-                    name="phone"
-                    type="tel"
-                    value={formData.phone}
-                    onChange={handleChange}
-                  />
-                  <FormField
-                    label="Password"
-                    name="password"
-                    type="password"
-                    value={formData.password}
-                    onChange={handleChange}
-                  />
-                  <FormField
-                    label="Confirm password"
-                    name="confirmPassword"
-                    type="password"
-                    value={formData.confirmPassword}
-                    onChange={handleChange}
-                  />
-                </>
-              )}
-
-              {step === 3 && (
-                <>
-                  <FormField
-                    label="Date of birth"
-                    name="birthDate"
-                    type="date"
-                    value={formData.birthDate}
-                    onChange={handleChange}
-                  />
-                  <p className="field-message">Please select a date.</p>
-                  <label className="image-upload">
-                    <span>
-                      Profile image <b>*</b>
-                    </span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={handleProfileImageChange}
-                    />
-                    <span className="image-upload-box">
-                      {formData.profileImagePreview ? (
-                        <Image
-                          src={formData.profileImagePreview}
-                          alt="Profile preview"
-                          fill
-                          unoptimized
-                          className="profile-preview"
-                        />
-                      ) : (
-                        <>
-                          <span className="add-image-icon">
-                            <Image
-                              src="/image.svg"
-                              alt=""
-                              width={16}
-                              height={16}
-                            />
-                          </span>
-                          <span>Add image</span>
-                        </>
-                      )}
-                    </span>
-                  </label>
-                </>
-              )}
-            </div>
-
-            {error && <p className="signup-error">{error}</p>}
-
-            <div className="signup-controls">
-              {step > 1 && (
-                <button
-                  type="button"
-                  className="secondary-button"
-                  onClick={handleBack}
-                >
-                  ‹ Back
-                </button>
-              )}
-              <button type="submit" className="primary-button signup-submit">
-                {step === 3 ? "Submit" : "Continue"} {step}/3 ›
-              </button>
-            </div>
-          </>
-        )}
+          )}
+          <button type="submit" className="primary-button signup-submit">
+            {step === 3 ? "Submit" : "Continue"} {step}/3 ›
+          </button>
+        </div>
       </form>
     </main>
   );
 }
 
-function FormField({ label, name, type = "text", value, onChange }) {
+function FormField({ label, name, type = "text", value, onChange, error }) {
   return (
     <label className="form-field">
       <span>
@@ -294,6 +225,37 @@ function FormField({ label, name, type = "text", value, onChange }) {
         onChange={onChange}
         placeholder={label}
       />
+      {error && <p className="field-message">{error}</p>}
+    </label>
+  );
+}
+
+function ImageUpload({ preview, error, onChange }) {
+  return (
+    <label className="image-upload">
+      <span>
+        Profile image <b>*</b>
+      </span>
+      <input type="file" accept="image/*" onChange={onChange} />
+      <span className="image-upload-box">
+        {preview ? (
+          <Image
+            src={preview}
+            alt="Profile preview"
+            fill
+            unoptimized
+            className="profile-preview"
+          />
+        ) : (
+          <>
+            <span className="add-image-icon">
+              <Image src="/image.svg" alt="" width={16} height={16} />
+            </span>
+            <span>Add image</span>
+          </>
+        )}
+      </span>
+      {error && <p className="field-message">{error}</p>}
     </label>
   );
 }
