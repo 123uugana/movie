@@ -1,4 +1,3 @@
-import HeroCarousel from "@/components/HeroCarousel";
 import CinemaOrbit3D from "@/components/CinemaOrbit3D";
 import MovieSection from "@/components/MovieSection";
 import { getMovies } from "@/lib/movie-service";
@@ -10,7 +9,6 @@ export default async function Home() {
 
   return (
     <main className="page">
-      <HeroCarousel movies={movies.slice(0, 3)} />
       <CinemaOrbit3D movies={movies.slice(0, 10)} />
 
       <MovieSection title="Popular Movies" movies={movies.slice(0, 8)} />

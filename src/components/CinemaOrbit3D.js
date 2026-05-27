@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import Image from "next/image";
 import { Clapperboard, Maximize2, Play, RotateCcw, X } from "lucide-react";
 import * as THREE from "three";
+import { getWebglPosterSource } from "@/lib/webgl-poster-source";
 
 const ACCENTS = ["#14b8a6", "#f59e0b", "#ef476f", "#38bdf8", "#f97316", "#22c55e"];
 const MAX_ORBIT_MOVIES = 10;
@@ -86,7 +87,7 @@ export default function CinemaOrbit3D({ movies }) {
   const wrapRef = useRef(null);
   const selectedRef = useRef(0);
   const hoverRef = useRef(null);
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoverIndex, setHoverIndex] = useState(null);
 
@@ -208,7 +209,7 @@ export default function CinemaOrbit3D({ movies }) {
         side: THREE.DoubleSide,
       });
 
-      const posterSource = movie.image || movie.cover;
+      const posterSource = getWebglPosterSource(movie.image || movie.cover);
 
       if (posterSource) {
         textureLoader.load(
@@ -390,10 +391,10 @@ export default function CinemaOrbit3D({ movies }) {
             <Clapperboard size={16} />
             <span>3D movie deck</span>
           </div>
-          <h2>Open a bigger 3D selector.</h2>
+          <h2>Movie posters in orbit.</h2>
           <p>
-            Choose from floating movie posters in a larger cinema view with light and
-            dark mode friendly colors.
+            Browse featured movies through a floating cinema deck, then jump into the
+            full 3D selector when you want a closer look.
           </p>
           <button className="cinema-open-button" onClick={() => setIsOpen(true)} type="button">
             <Maximize2 size={17} />
