@@ -1,8 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import Image from "next/image";
-import { Clapperboard, Maximize2, Play, RotateCcw, X } from "lucide-react";
+import { Clapperboard, Play, RotateCcw } from "lucide-react";
 import * as THREE from "three";
 import { getWebglPosterSource } from "@/lib/webgl-poster-source";
 
@@ -87,13 +86,11 @@ export default function CinemaOrbit3D({ movies }) {
   const wrapRef = useRef(null);
   const selectedRef = useRef(0);
   const hoverRef = useRef(null);
-  const [isOpen, setIsOpen] = useState(true);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoverIndex, setHoverIndex] = useState(null);
 
   const movieItems = useMemo(() => movies.slice(0, MAX_ORBIT_MOVIES), [movies]);
   const selectedMovie = movieItems[selectedIndex] || movieItems[0];
-  const previewMovies = movieItems.slice(0, 3);
 
   useEffect(() => {
     selectedRef.current = selectedIndex;
@@ -104,30 +101,10 @@ export default function CinemaOrbit3D({ movies }) {
   }, [hoverIndex]);
 
   useEffect(() => {
-    if (!isOpen) {
-      return undefined;
-    }
-
-    function closeOnEscape(event) {
-      if (event.key === "Escape") {
-        setIsOpen(false);
-      }
-    }
-
-    document.body.classList.add("cinema-selector-open");
-    window.addEventListener("keydown", closeOnEscape);
-
-    return () => {
-      document.body.classList.remove("cinema-selector-open");
-      window.removeEventListener("keydown", closeOnEscape);
-    };
-  }, [isOpen]);
-
-  useEffect(() => {
     const canvas = canvasRef.current;
     const wrapper = wrapRef.current;
 
-    if (!isOpen || !canvas || !wrapper || movieItems.length === 0) {
+    if (!canvas || !wrapper || movieItems.length === 0) {
       return undefined;
     }
 
@@ -279,6 +256,8 @@ export default function CinemaOrbit3D({ movies }) {
     let rafId = 0;
     let pointerX = 0;
     let pointerY = 0;
+    let autoRotation = 0;
+    let previousTime = 0;
 
     function resize() {
       const { width, height } = wrapper.getBoundingClientRect();
@@ -323,7 +302,12 @@ export default function CinemaOrbit3D({ movies }) {
 
     function animate(time) {
       const seconds = time * 0.001;
-      const targetRotation = -selectedRef.current * ((Math.PI * 2) / count);
+      const delta = previousTime ? Math.min((time - previousTime) * 0.001, 0.04) : 0;
+      previousTime = time;
+      const orbitSpeed = hoverRef.current === null ? 0.28 : 0.08;
+      autoRotation += delta * orbitSpeed;
+
+      const targetRotation = -selectedRef.current * ((Math.PI * 2) / count) + autoRotation;
       rig.rotation.y += (targetRotation + pointerX * 0.13 - rig.rotation.y) * 0.06;
       rig.rotation.x += (pointerY * -0.06 - rig.rotation.x) * 0.06;
 
@@ -377,120 +361,68 @@ export default function CinemaOrbit3D({ movies }) {
       });
       renderer.dispose();
     };
-  }, [isOpen, movieItems]);
+  }, [movieItems]);
 
   if (!selectedMovie) {
     return null;
   }
 
   return (
-    <>
-      <section className="cinema-orbit" aria-label="Interactive 3D movie browser">
-        <div className="cinema-orbit-copy">
-          <div className="cinema-orbit-kicker">
-            <Clapperboard size={16} />
-            <span>3D movie deck</span>
-          </div>
-          <h2>Movie posters in orbit.</h2>
-          <p>
-            Browse featured movies through a floating cinema deck, then jump into the
-            full 3D selector when you want a closer look.
-          </p>
-          <button className="cinema-open-button" onClick={() => setIsOpen(true)} type="button">
-            <Maximize2 size={17} />
-            Open 3D selector
-          </button>
+    <section className="cinema-orbit" aria-label="Interactive 3D movie browser">
+      <div className="cinema-orbit-copy">
+        <div className="cinema-orbit-kicker">
+          <Clapperboard size={16} />
+          <span> movie deck</span>
         </div>
+        <h2>Movie posters in orbit.</h2>
+        <p>
+          Browse featured movies through a floating cinema deck. Hover or tap a poster
+          to focus it, then open the movie details from the side panel.
+        </p>
+      </div>
 
-        <div className="cinema-preview-stack" aria-hidden="true">
-          {previewMovies.map((movie, index) => (
-            <Image
-              alt=""
-              className={`cinema-preview-poster cinema-preview-poster-${index + 1}`}
-              height={210}
+      <div className="cinema-orbit-stage" ref={wrapRef}>
+        <canvas ref={canvasRef} aria-hidden="true" />
+      </div>
+
+      <aside className="cinema-orbit-panel" aria-live="polite">
+        <p className="cinema-orbit-label">Now focused</p>
+        <h3>{selectedMovie.title}</h3>
+        <div className="cinema-orbit-stats">
+          <span>{selectedMovie.year || "Now"}</span>
+          <span>{selectedMovie.rating || "NR"} rating</span>
+          <span>{selectedMovie.genre || "Movie"}</span>
+        </div>
+        <div className="cinema-orbit-actions" aria-label="Featured movies">
+          {movieItems.map((movie, index) => (
+            <button
+              className={index === selectedIndex ? "active-cinema-chip" : ""}
               key={movie.id}
-              src={movie.image || movie.cover}
-              width={140}
-            />
+              onClick={() => setSelectedIndex(index)}
+              type="button"
+            >
+              {index + 1}
+            </button>
           ))}
         </div>
-
-        <aside className="cinema-orbit-panel" aria-live="polite">
-          <p className="cinema-orbit-label">Ready to explore</p>
-          <h3>{selectedMovie.title}</h3>
-          <div className="cinema-orbit-stats">
-            <span>{selectedMovie.year || "Now"}</span>
-            <span>{selectedMovie.rating || "NR"} rating</span>
-            <span>{selectedMovie.genre || "Movie"}</span>
-          </div>
-        </aside>
-      </section>
-
-      {isOpen ? (
-        <div className="cinema-selector-backdrop" role="dialog" aria-modal="true">
-          <div className="cinema-selector">
-            <div className="cinema-selector-header">
-              <div>
-                <p className="cinema-orbit-label">3D selector</p>
-                <h2>Choose a movie</h2>
-              </div>
-              <button
-                className="cinema-icon-button"
-                onClick={() => setIsOpen(false)}
-                type="button"
-                aria-label="Close 3D selector"
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="cinema-selector-body">
-              <div className="cinema-orbit-stage" ref={wrapRef}>
-                <canvas ref={canvasRef} aria-hidden="true" />
-              </div>
-
-              <aside className="cinema-orbit-panel cinema-selector-panel" aria-live="polite">
-                <p className="cinema-orbit-label">Now focused</p>
-                <h3>{selectedMovie.title}</h3>
-                <div className="cinema-orbit-stats">
-                  <span>{selectedMovie.year || "Now"}</span>
-                  <span>{selectedMovie.rating || "NR"} rating</span>
-                  <span>{selectedMovie.genre || "Movie"}</span>
-                </div>
-                <div className="cinema-orbit-actions" aria-label="Featured movies">
-                  {movieItems.map((movie, index) => (
-                    <button
-                      className={index === selectedIndex ? "active-cinema-chip" : ""}
-                      key={movie.id}
-                      onClick={() => setSelectedIndex(index)}
-                      type="button"
-                    >
-                      {index + 1}
-                    </button>
-                  ))}
-                </div>
-                <div className="cinema-orbit-controls">
-                  <a
-                    href={`/movies/${selectedMovie.id}`}
-                    className="cinema-icon-button"
-                    aria-label="Open movie details"
-                  >
-                    <Play size={17} />
-                  </a>
-                  <button
-                    className="cinema-icon-button"
-                    onClick={() => setSelectedIndex(0)}
-                    type="button"
-                    aria-label="Reset 3D orbit"
-                  >
-                    <RotateCcw size={17} />
-                  </button>
-                </div>
-              </aside>
-            </div>
-          </div>
+        <div className="cinema-orbit-controls">
+          <a
+            href={`/movies/${selectedMovie.id}`}
+            className="cinema-icon-button"
+            aria-label="Open movie details"
+          >
+            <Play size={17} />
+          </a>
+          <button
+            className="cinema-icon-button"
+            onClick={() => setSelectedIndex(0)}
+            type="button"
+            aria-label="Reset 3D orbit"
+          >
+            <RotateCcw size={17} />
+          </button>
         </div>
-      ) : null}
-    </>
+      </aside>
+    </section>
   );
 }
