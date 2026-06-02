@@ -29,6 +29,16 @@ function genreHref(pathname, selectedGenres, page) {
   return params.toString() ? `${pathname}?${params.toString()}` : pathname;
 }
 
+function clampPage(page, totalPages) {
+  const requestedPage = Number(page);
+
+  if (!Number.isFinite(requestedPage)) {
+    return 1;
+  }
+
+  return Math.min(Math.max(Math.floor(requestedPage), 1), totalPages);
+}
+
 export default function GenresClient({
   currentPage,
   genres,
@@ -78,6 +88,17 @@ export default function GenresClient({
     });
   }
 
+  function jumpToPage(event) {
+    event.preventDefault();
+
+    const formData = new FormData(event.currentTarget);
+    const nextPage = clampPage(formData.get("page"), totalPages);
+
+    router.push(genreHref(pathname, selectedGenres, nextPage), {
+      scroll: false,
+    });
+  }
+
   return (
     <main className="page genre-page">
       <div className="genre-results">
@@ -110,6 +131,21 @@ export default function GenresClient({
             <span className="search-page-count">
               Page {currentPage} of {totalPages}
             </span>
+
+            <form className="page-jump" onSubmit={jumpToPage}>
+              <label htmlFor="genre-page-jump">Page</label>
+              <input
+                id="genre-page-jump"
+                key={currentPage}
+                name="page"
+                type="number"
+                min="1"
+                max={totalPages}
+                defaultValue={currentPage}
+                inputMode="numeric"
+              />
+              <button type="submit">Go</button>
+            </form>
 
             <Link
               href={genreHref(pathname, selectedGenres, Math.min(totalPages, currentPage + 1))}
