@@ -1,57 +1,71 @@
 "use client";
 
-import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import MovieCard from "@/components/MovieCard";
 
-export default function SearchClient({ initialQuery, movies }) {
-  const pathname = usePathname();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  const [searchText, setSearchText] = useState(initialQuery);
+function searchHref(query, page) {
+  const params = new URLSearchParams();
 
-  const filteredMovies = movies.filter((movie) =>
-    movie.title.toLowerCase().includes(searchText.toLowerCase()),
-  );
-
-  useEffect(() => {
-    setSearchText(searchParams.get("q") || "");
-  }, [searchParams]);
-
-  function updateSearchText(nextSearchText) {
-    const params = new URLSearchParams(searchParams.toString());
-
-    if (nextSearchText.trim()) {
-      params.set("q", nextSearchText);
-    } else {
-      params.delete("q");
-    }
-
-    setSearchText(nextSearchText);
-    router.replace(params.toString() ? `${pathname}?${params.toString()}` : pathname, {
-      scroll: false,
-    });
+  if (query.trim()) {
+    params.set("query", query.trim());
   }
 
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+
+  return params.toString() ? `/search?${params.toString()}` : "/search";
+}
+
+export default function SearchClient({ currentPage, initialQuery, movies, totalPages, totalResults }) {
   return (
     <main className="page simple-page">
       <h1>Search</h1>
-      <input
-        value={searchText}
-        onChange={(event) => updateSearchText(event.target.value)}
-        placeholder="Search movie..."
-        className="search-input"
-      />
 
-      {filteredMovies.length === 0 ? (
+      {initialQuery ? (
+        <p className="search-summary">
+          {totalResults} results for &quot;{initialQuery}&quot;
+        </p>
+      ) : null}
+
+      {!initialQuery ? (
+        <div className="empty-box">Search movies from TMDB.</div>
+      ) : movies.length === 0 ? (
         <div className="empty-box">No movie found.</div>
       ) : (
         <div className="movie-grid">
-          {filteredMovies.map((movie) => (
+          {movies.map((movie) => (
             <MovieCard key={movie.id} movie={movie} />
           ))}
         </div>
       )}
+
+      {initialQuery && totalPages > 1 ? (
+        <nav className="pagination search-pagination" aria-label="Search pagination">
+          <Link
+            href={searchHref(initialQuery, Math.max(1, currentPage - 1))}
+            className={`pagination-step ${currentPage === 1 ? "disabled" : ""}`}
+            aria-disabled={currentPage === 1}
+          >
+            <ChevronLeft size={24} strokeWidth={2.2} />
+            <span>Previous</span>
+          </Link>
+
+          <span className="search-page-count">
+            Page {currentPage} of {totalPages}
+          </span>
+
+          <Link
+            href={searchHref(initialQuery, Math.min(totalPages, currentPage + 1))}
+            className={`pagination-step ${currentPage === totalPages ? "disabled" : ""}`}
+            aria-disabled={currentPage === totalPages}
+          >
+            <span>Next</span>
+            <ChevronRight size={24} strokeWidth={2.2} />
+          </Link>
+        </nav>
+      ) : null}
     </main>
   );
 }

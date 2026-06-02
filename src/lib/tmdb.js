@@ -100,6 +100,26 @@ function imageUrl(path, size = "w500") {
   return path ? `${TMDB_IMAGE_URL}/${size}${path}` : "";
 }
 
+function mapTmdbSearchMovie(movie) {
+  return {
+    id: movie.id,
+    title: movie.title || movie.original_title || "Untitled",
+    year: movie.release_date || "Coming soon",
+    rating: movie.vote_average ? movie.vote_average.toFixed(1) : "N/A",
+    genre: "Movie",
+    image: imageUrl(movie.poster_path, "w500") || "/image.svg",
+    cover: imageUrl(movie.backdrop_path || movie.poster_path, "original") || "/image.svg",
+    description: movie.overview || "No description available.",
+    director: "Unknown",
+    writers: "Unknown",
+    duration: "Unknown",
+    trailer: "",
+    videoId: "",
+    cast: ["Unknown"],
+    tags: ["Movie"],
+  };
+}
+
 function formatDuration(minutes) {
   if (!minutes) {
     return "Unknown";
@@ -170,6 +190,41 @@ export async function getTmdbMovies() {
   );
 
   return movies.filter(Boolean);
+}
+
+export async function searchTmdbMovies(query, page = 1) {
+  const searchQuery = String(query || "").trim();
+
+  if (!searchQuery) {
+    return {
+      movies: [],
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+    };
+  }
+
+  const searchResult = await fetchTmdb("/search/movie", {
+    query: searchQuery,
+    language: "en-US",
+    page: String(page),
+  });
+
+  if (!searchResult) {
+    return {
+      movies: [],
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+    };
+  }
+
+  return {
+    movies: (searchResult.results || []).map(mapTmdbSearchMovie),
+    page: searchResult.page || 1,
+    totalPages: Math.min(searchResult.total_pages || 1, 500),
+    totalResults: searchResult.total_results || 0,
+  };
 }
 
 export { TMDB_MOVIE_IDS };

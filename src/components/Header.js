@@ -1,5 +1,7 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import Logo from "./Logo";
+import HeaderSearch from "./HeaderSearch";
 import ThemeToggle from "./ThemeToggle";
 
 export default function Header() {
@@ -13,10 +15,9 @@ export default function Header() {
         <Link href="/genres" className="genre-select">
          ⌄ Genre
         </Link>
-        <Link href="/search" className="header-search">
-          <span>⌕</span>
-          <span className="header-search-text">Search...</span>
-        </Link>
+        <Suspense fallback={<div className="header-search" />}>
+          <HeaderSearch />
+        </Suspense>
       </nav>
 
       <div className="header-actions">
