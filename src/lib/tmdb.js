@@ -241,6 +241,7 @@ export async function getTmdbGenres() {
 }
 
 export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
+  const currentPage = Number.isFinite(Number(page)) && Number(page) > 0 ? Math.floor(Number(page)) : 1;
   const selectedGenres = [
     ...new Set(
       genreNames
@@ -250,7 +251,12 @@ export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
   ];
 
   if (selectedGenres.length === 0) {
-    return [];
+    return {
+      movies: [],
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+    };
   }
 
   const genreOptions = await getTmdbGenreOptions();
@@ -262,25 +268,40 @@ export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
     .filter(Boolean);
 
   if (selectedGenreIds.length === 0) {
-    return [];
+    return {
+      movies: [],
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+    };
   }
 
   const discoverResult = await fetchTmdb("/discover/movie", {
     include_adult: "false",
     include_video: "false",
     language: "en-US",
-    page: String(page),
+    page: String(currentPage),
     sort_by: "popularity.desc",
     with_genres: selectedGenreIds.join("|"),
   });
 
   if (!discoverResult) {
-    return [];
+    return {
+      movies: [],
+      page: 1,
+      totalPages: 1,
+      totalResults: 0,
+    };
   }
 
   const genreMap = new Map(genreOptions.map((genre) => [genre.id, genre.name]));
 
-  return (discoverResult.results || []).map((movie) => mapTmdbListMovie(movie, genreMap));
+  return {
+    movies: (discoverResult.results || []).map((movie) => mapTmdbListMovie(movie, genreMap)),
+    page: discoverResult.page || currentPage,
+    totalPages: Math.min(discoverResult.total_pages || 1, 500),
+    totalResults: discoverResult.total_results || 0,
+  };
 }
 
 export async function searchTmdbMovies(query, page = 1) {

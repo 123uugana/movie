@@ -1,6 +1,8 @@
 "use client";
 
+import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 import MovieCard from "@/components/MovieCard";
 
 function getGenresFromParams(searchParams, genres) {
@@ -13,7 +15,27 @@ function getGenresFromParams(searchParams, genres) {
   )];
 }
 
-export default function GenresClient({ genres, movies }) {
+function genreHref(pathname, selectedGenres, page) {
+  const params = new URLSearchParams();
+
+  if (selectedGenres.length > 0) {
+    params.set("genre", selectedGenres.join(","));
+  }
+
+  if (page > 1) {
+    params.set("page", String(page));
+  }
+
+  return params.toString() ? `${pathname}?${params.toString()}` : pathname;
+}
+
+export default function GenresClient({
+  currentPage,
+  genres,
+  movies,
+  totalPages,
+  totalResults,
+}) {
   const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -45,6 +67,7 @@ export default function GenresClient({ genres, movies }) {
   function updateGenreParams(nextGenres) {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("genre");
+    params.delete("page");
 
     if (nextGenres.length > 0) {
       params.set("genre", nextGenres.join(","));
@@ -60,7 +83,7 @@ export default function GenresClient({ genres, movies }) {
       <div className="genre-results">
         <h1>Search results</h1>
         <h2>
-          {filteredMovies.length} results for &quot;{resultsLabel}&quot;
+          {totalResults} results for &quot;{resultsLabel}&quot;
         </h2>
 
         {filteredMovies.length === 0 ? (
@@ -72,6 +95,32 @@ export default function GenresClient({ genres, movies }) {
             ))}
           </div>
         )}
+
+        {totalPages > 1 ? (
+          <nav className="pagination search-pagination" aria-label="Genre pagination">
+            <Link
+              href={genreHref(pathname, selectedGenres, Math.max(1, currentPage - 1))}
+              className={`pagination-step ${currentPage === 1 ? "disabled" : ""}`}
+              aria-disabled={currentPage === 1}
+            >
+              <ChevronLeft size={24} strokeWidth={2.2} />
+              <span>Previous</span>
+            </Link>
+
+            <span className="search-page-count">
+              Page {currentPage} of {totalPages}
+            </span>
+
+            <Link
+              href={genreHref(pathname, selectedGenres, Math.min(totalPages, currentPage + 1))}
+              className={`pagination-step ${currentPage === totalPages ? "disabled" : ""}`}
+              aria-disabled={currentPage === totalPages}
+            >
+              <span>Next</span>
+              <ChevronRight size={24} strokeWidth={2.2} />
+            </Link>
+          </nav>
+        ) : null}
       </div>
 
       <div className="genre-sidebar">

@@ -18,10 +18,24 @@ function getSelectedGenres(searchParams) {
   ];
 }
 
+function getCurrentPage(searchParams) {
+  const requestedPage = Number(searchParams?.page || 1);
+
+  return Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+}
+
 export default async function GenresPage({ searchParams }) {
   const selectedGenres = getSelectedGenres(searchParams);
-  const movies = await getMoviesByGenres(selectedGenres);
-  const genres = await getGenres(movies);
+  const movieResult = await getMoviesByGenres(selectedGenres, getCurrentPage(searchParams));
+  const genres = await getGenres(movieResult.movies);
 
-  return <GenresClient genres={genres} movies={movies} />;
+  return (
+    <GenresClient
+      currentPage={movieResult.page}
+      genres={genres}
+      movies={movieResult.movies}
+      totalPages={movieResult.totalPages}
+      totalResults={movieResult.totalResults}
+    />
+  );
 }

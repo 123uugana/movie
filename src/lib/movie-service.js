@@ -6,6 +6,8 @@ import {
   getTmdbMovies,
 } from "@/lib/tmdb";
 
+const GENRE_PAGE_SIZE = 20;
+
 function uniqueGenres(genres) {
   return [
     "All",
@@ -29,6 +31,24 @@ function filterMoviesByGenres(movies, genres) {
 
     return movieGenres.some((genre) => selectedGenres.has(genre));
   });
+}
+
+function normalizePage(page) {
+  const requestedPage = Number(page || 1);
+
+  return Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+}
+
+function paginateMovies(movies, page) {
+  const totalPages = Math.max(1, Math.ceil(movies.length / GENRE_PAGE_SIZE));
+  const currentPage = Math.min(normalizePage(page), totalPages);
+
+  return {
+    movies: movies.slice((currentPage - 1) * GENRE_PAGE_SIZE, currentPage * GENRE_PAGE_SIZE),
+    page: currentPage,
+    totalPages,
+    totalResults: movies.length,
+  };
 }
 
 export async function getMovies() {
@@ -62,20 +82,22 @@ export async function getGenres(movies = []) {
   return uniqueGenres([...localGenres, ...getMovieGenreNames(movies)]);
 }
 
-export async function getMoviesByGenres(genres) {
+export async function getMoviesByGenres(genres, page = 1) {
   const selectedGenres = genres.filter((genre) => genre && genre !== "All");
 
   if (selectedGenres.length === 0) {
-    return getMovies();
+    const movies = await getMovies();
+
+    return paginateMovies(movies, page);
   }
 
-  const tmdbMovies = await discoverTmdbMoviesByGenres(selectedGenres);
+  const tmdbResult = await discoverTmdbMoviesByGenres(selectedGenres, page);
 
-  if (tmdbMovies.length > 0) {
-    return tmdbMovies;
+  if (tmdbResult.movies.length > 0 || tmdbResult.totalResults > 0) {
+    return tmdbResult;
   }
 
   const movies = await getMovies();
 
-  return filterMoviesByGenres(movies, selectedGenres);
+  return paginateMovies(filterMoviesByGenres(movies, selectedGenres), page);
 }
