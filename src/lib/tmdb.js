@@ -39,6 +39,10 @@ const TMDB_IMAGE_URL = (process.env.TMDB_IMAGE_URL || "https://image.tmdb.org/t/
   "",
 );
 
+function normalizeGenreName(genreName) {
+  return String(genreName || "").trim().toLowerCase();
+}
+
 function getTmdbAuth() {
   const accessToken = process.env.TMDB_ACCESS_TOKEN || process.env.TMDB_API_TOKEN;
   const apiKey = process.env.TMDB_API_KEY;
@@ -120,6 +124,31 @@ function mapTmdbSearchMovie(movie) {
   };
 }
 
+function mapTmdbListMovie(movie, genreMap = new Map()) {
+  const genreNames =
+    movie.genre_ids
+      ?.map((genreId) => genreMap.get(genreId))
+      .filter(Boolean) || [];
+
+  return {
+    id: movie.id,
+    title: movie.title || movie.original_title || "Untitled",
+    year: movie.release_date || "Coming soon",
+    rating: movie.vote_average ? movie.vote_average.toFixed(1) : "N/A",
+    genre: genreNames[0] || "Movie",
+    image: imageUrl(movie.poster_path, "w500") || "/image.svg",
+    cover: imageUrl(movie.backdrop_path || movie.poster_path, "original") || "/image.svg",
+    description: movie.overview || "No description available.",
+    director: "Unknown",
+    writers: "Unknown",
+    duration: "Unknown",
+    trailer: "",
+    videoId: "",
+    cast: ["Unknown"],
+    tags: genreNames.length ? genreNames : ["Movie"],
+  };
+}
+
 function formatDuration(minutes) {
   if (!minutes) {
     return "Unknown";
@@ -190,6 +219,68 @@ export async function getTmdbMovies() {
   );
 
   return movies.filter(Boolean);
+}
+
+export async function getTmdbGenreOptions() {
+  const genreResult = await fetchTmdb("/genre/movie/list", {
+    language: "en-US",
+  });
+
+  return (genreResult?.genres || [])
+    .filter((genre) => genre.id && genre.name)
+    .map((genre) => ({
+      id: genre.id,
+      name: genre.name,
+    }));
+}
+
+export async function getTmdbGenres() {
+  const genres = await getTmdbGenreOptions();
+
+  return genres.map((genre) => genre.name);
+}
+
+export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
+  const selectedGenres = [
+    ...new Set(
+      genreNames
+        .map((genreName) => String(genreName || "").trim())
+        .filter(Boolean),
+    ),
+  ];
+
+  if (selectedGenres.length === 0) {
+    return [];
+  }
+
+  const genreOptions = await getTmdbGenreOptions();
+  const genreLookup = new Map(
+    genreOptions.map((genre) => [normalizeGenreName(genre.name), genre.id]),
+  );
+  const selectedGenreIds = selectedGenres
+    .map((genreName) => genreLookup.get(normalizeGenreName(genreName)))
+    .filter(Boolean);
+
+  if (selectedGenreIds.length === 0) {
+    return [];
+  }
+
+  const discoverResult = await fetchTmdb("/discover/movie", {
+    include_adult: "false",
+    include_video: "false",
+    language: "en-US",
+    page: String(page),
+    sort_by: "popularity.desc",
+    with_genres: selectedGenreIds.join("|"),
+  });
+
+  if (!discoverResult) {
+    return [];
+  }
+
+  const genreMap = new Map(genreOptions.map((genre) => [genre.id, genre.name]));
+
+  return (discoverResult.results || []).map((movie) => mapTmdbListMovie(movie, genreMap));
 }
 
 export async function searchTmdbMovies(query, page = 1) {
