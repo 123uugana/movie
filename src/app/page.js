@@ -14,10 +14,10 @@ export default async function Home() {
 
   return (
     <main className="page">
+      <StudioBrandRow />
       <CinemaOrbit3D movies={movies.slice(0, 10)} />
 
       <MovieSection title="Popular Movies" movies={popularMovies.slice(0, 18)} seeMoreHref="/popular" />
-      <StudioBrandRow />
       <MovieSection title="Top Rated" movies={topRatedMovies.slice(0, 18)} seeMoreHref="/top-rated" />
       <MovieSection title="Coming Soon" movies={comingSoonMovies.slice(0, 18)} seeMoreHref="/coming-soon" />
     </main>
