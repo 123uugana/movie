@@ -919,6 +919,13 @@ select {
   line-height: 1;
 }
 
+.studio-results-header p {
+  margin: 8px 0 0;
+  color: #6b7280;
+  font-size: 13px;
+  font-weight: 700;
+}
+
 .pagination {
   min-height: 110px;
   display: flex;
@@ -1804,6 +1811,7 @@ body.dark-mode .top-nav,
 body.dark-mode .movie-card p,
 body.dark-mode .movie-meta,
 body.dark-mode .details-text,
+body.dark-mode .studio-results-header p,
 body.dark-mode .genre-sidebar p {
   color: #c7c7d1;
 }

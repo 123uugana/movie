@@ -43,6 +43,21 @@ function normalizeGenreName(genreName) {
   return String(genreName || "").trim().toLowerCase();
 }
 
+function normalizePage(page) {
+  const requestedPage = Number(page || 1);
+
+  return Number.isFinite(requestedPage) && requestedPage > 0 ? Math.floor(requestedPage) : 1;
+}
+
+function emptyMovieResult(page = 1) {
+  return {
+    movies: [],
+    page: normalizePage(page),
+    totalPages: 1,
+    totalResults: 0,
+  };
+}
+
 function getTmdbAuth() {
   const accessToken = process.env.TMDB_ACCESS_TOKEN || process.env.TMDB_API_TOKEN;
   const apiKey = process.env.TMDB_API_KEY;
@@ -241,7 +256,7 @@ export async function getTmdbGenres() {
 }
 
 export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
-  const currentPage = Number.isFinite(Number(page)) && Number(page) > 0 ? Math.floor(Number(page)) : 1;
+  const currentPage = normalizePage(page);
   const selectedGenres = [
     ...new Set(
       genreNames
@@ -251,12 +266,7 @@ export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
   ];
 
   if (selectedGenres.length === 0) {
-    return {
-      movies: [],
-      page: 1,
-      totalPages: 1,
-      totalResults: 0,
-    };
+    return emptyMovieResult(currentPage);
   }
 
   const genreOptions = await getTmdbGenreOptions();
@@ -268,12 +278,7 @@ export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
     .filter(Boolean);
 
   if (selectedGenreIds.length === 0) {
-    return {
-      movies: [],
-      page: 1,
-      totalPages: 1,
-      totalResults: 0,
-    };
+    return emptyMovieResult(currentPage);
   }
 
   const discoverResult = await fetchTmdb("/discover/movie", {
@@ -286,12 +291,47 @@ export async function discoverTmdbMoviesByGenres(genreNames, page = 1) {
   });
 
   if (!discoverResult) {
-    return {
-      movies: [],
-      page: 1,
-      totalPages: 1,
-      totalResults: 0,
-    };
+    return emptyMovieResult(currentPage);
+  }
+
+  const genreMap = new Map(genreOptions.map((genre) => [genre.id, genre.name]));
+
+  return {
+    movies: (discoverResult.results || []).map((movie) => mapTmdbListMovie(movie, genreMap)),
+    page: discoverResult.page || currentPage,
+    totalPages: Math.min(discoverResult.total_pages || 1, 500),
+    totalResults: discoverResult.total_results || 0,
+  };
+}
+
+export async function discoverTmdbMoviesByCompanies(companyIds, page = 1) {
+  const currentPage = normalizePage(page);
+  const selectedCompanyIds = [
+    ...new Set(
+      companyIds
+        .map((companyId) => Number(companyId))
+        .filter((companyId) => Number.isInteger(companyId) && companyId > 0),
+    ),
+  ];
+
+  if (selectedCompanyIds.length === 0) {
+    return emptyMovieResult(currentPage);
+  }
+
+  const [discoverResult, genreOptions] = await Promise.all([
+    fetchTmdb("/discover/movie", {
+      include_adult: "false",
+      include_video: "false",
+      language: "en-US",
+      page: String(currentPage),
+      sort_by: "popularity.desc",
+      with_companies: selectedCompanyIds.join("|"),
+    }),
+    getTmdbGenreOptions(),
+  ]);
+
+  if (!discoverResult) {
+    return emptyMovieResult(currentPage);
   }
 
   const genreMap = new Map(genreOptions.map((genre) => [genre.id, genre.name]));
