@@ -1,5 +1,6 @@
 import CinemaOrbit3D from "@/components/CinemaOrbit3D";
 import MovieSection from "@/components/MovieSection";
+import StudioBrandRow from "@/components/StudioBrandRow";
 import { getComingSoonMovies, getPopularMovies, getTopRatedMovies } from "@/lib/movie-lists";
 import { getMovies } from "@/lib/movie-service";
 
@@ -16,6 +17,7 @@ export default async function Home() {
       <CinemaOrbit3D movies={movies.slice(0, 10)} />
 
       <MovieSection title="Popular Movies" movies={popularMovies.slice(0, 18)} seeMoreHref="/popular" />
+      <StudioBrandRow />
       <MovieSection title="Top Rated" movies={topRatedMovies.slice(0, 18)} seeMoreHref="/top-rated" />
       <MovieSection title="Coming Soon" movies={comingSoonMovies.slice(0, 18)} seeMoreHref="/coming-soon" />
     </main>
